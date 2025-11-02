@@ -1,0 +1,11 @@
+nohup: ignoring input
+
+============================================================
+Starting skull stripping with device: cuda
+GPU count: 2
+GPU name: NVIDIA GeForce RTX 3090
+============================================================
+
+
+Processing [1]: /mnt/Data/AKIB/Training data/1/3T/1_FLAIR.nii.gz
+Downloading https://zenodo.org/record/2540695/files/0.model?download=1 ...
