@@ -4,6 +4,8 @@ from ipywidgets import interact
 import numpy as np
 import SimpleITK as sitk
 import cv2
+import nibabel as nib
+from pathlib import Path
 
 def explore_3D_array(arr: np.ndarray, cmap: str = 'gray'):
   """
@@ -128,3 +130,147 @@ def explore_3D_array_with_mask_contour(arr: np.ndarray, mask: np.ndarray, thickn
     plt.show()
 
   interact(fn, SLICE=(0, arr.shape[0]-1))
+
+
+def get_nifti_info(file_path):
+  """
+  Get comprehensive information about a NIfTI MRI image.
+  
+  Args:
+      file_path: Path to the NIfTI file (.nii or .nii.gz)
+  
+  Returns:
+      dict: Dictionary containing image information including:
+          - shape, dimensions (width, height, depth)
+          - voxel size and volume
+          - intensity statistics (min, max, mean, std, median)
+          - non-zero voxel counts
+          - orientation and affine matrix
+          - header metadata
+  
+  Example:
+      >>> info = get_nifti_info('/path/to/image.nii.gz')
+      >>> print(f"Shape: {info['shape']}")
+      >>> print(f"Voxel size: {info['voxel_size']}")
+  """
+  try:
+      # Load the NIfTI file
+      img = nib.load(str(file_path))
+      
+      # Get the image data
+      data = img.get_fdata()
+      
+      # Get header information
+      header = img.header
+      
+      # Compile information
+      info = {
+          # File information
+          'file_path': str(file_path),
+          'file_size_mb': Path(file_path).stat().st_size / (1024 * 1024),
+          
+          # Shape and dimensions
+          'shape': data.shape,
+          'ndim': data.ndim,
+          'dimensions': {
+              'width': data.shape[0],
+              'height': data.shape[1],
+              'depth': data.shape[2] if data.ndim >= 3 else None,
+              'time': data.shape[3] if data.ndim >= 4 else None,
+          },
+          
+          # Voxel information
+          'voxel_size': header.get_zooms(),
+          'voxel_volume_mm3': np.prod(header.get_zooms()[:3]) if len(header.get_zooms()) >= 3 else None,
+          
+          # Intensity information
+          'data_type': str(data.dtype),
+          'min_intensity': float(np.min(data)),
+          'max_intensity': float(np.max(data)),
+          'mean_intensity': float(np.mean(data)),
+          'std_intensity': float(np.std(data)),
+          'median_intensity': float(np.median(data)),
+          
+          # Non-zero voxel statistics (useful for brain images)
+          'num_nonzero_voxels': int(np.count_nonzero(data)),
+          'num_total_voxels': int(data.size),
+          'percent_nonzero': float(100 * np.count_nonzero(data) / data.size),
+          
+          # Orientation information
+          'affine': img.affine.tolist(),
+          'orientation': nib.aff2axcodes(img.affine),
+          
+          # Header metadata
+          'qform_code': int(header['qform_code']),
+          'sform_code': int(header['sform_code']),
+          'xyzt_units': str(header.get_xyzt_units()),
+      }
+      
+      return info
+      
+  except Exception as e:
+      return {'error': str(e), 'file_path': str(file_path)}
+
+
+def print_nifti_info(file_path):
+  """
+  Print comprehensive information about a NIfTI MRI image in a readable format.
+  
+  Args:
+      file_path: Path to the NIfTI file (.nii or .nii.gz)
+  
+  Returns:
+      dict: Dictionary containing the image information
+  
+  Example:
+      >>> print_nifti_info('/path/to/image.nii.gz')
+  """
+  info = get_nifti_info(file_path)
+  
+  if 'error' in info:
+      print(f"❌ Error loading file: {info['error']}")
+      return info
+  
+  print(f"\n{'='*70}")
+  print(f"📊 NIfTI Image Information")
+  print(f"{'='*70}")
+  
+  # File information
+  print(f"\n📁 File: {Path(info['file_path']).name}")
+  print(f"   Size: {info['file_size_mb']:.2f} MB")
+  
+  # Dimensions
+  print(f"\n📐 Dimensions:")
+  print(f"   Shape: {info['shape']}")
+  print(f"   Width (X):  {info['dimensions']['width']} voxels")
+  print(f"   Height (Y): {info['dimensions']['height']} voxels")
+  if info['dimensions']['depth']:
+      print(f"   Depth (Z):  {info['dimensions']['depth']} voxels")
+  
+  # Voxel information
+  print(f"\n🔬 Voxel Information:")
+  voxel_size = info['voxel_size']
+  print(f"   Voxel size: {voxel_size[0]:.4f} × {voxel_size[1]:.4f} × {voxel_size[2]:.4f} mm")
+  if info['voxel_volume_mm3']:
+      print(f"   Voxel volume: {info['voxel_volume_mm3']:.6f} mm³")
+  
+  # Intensity statistics
+  print(f"\n💡 Intensity Statistics:")
+  print(f"   Data type: {info['data_type']}")
+  print(f"   Min:    {info['min_intensity']:.4f}")
+  print(f"   Max:    {info['max_intensity']:.4f}")
+  print(f"   Mean:   {info['mean_intensity']:.4f}")
+  print(f"   Std:    {info['std_intensity']:.4f}")
+  print(f"   Median: {info['median_intensity']:.4f}")
+  
+  # Non-zero voxels
+  print(f"\n🧠 Coverage:")
+  print(f"   Total voxels:    {info['num_total_voxels']:,}")
+  print(f"   Non-zero voxels: {info['num_nonzero_voxels']:,} ({info['percent_nonzero']:.2f}%)")
+  
+  # Orientation
+  print(f"\n🧭 Orientation: {info['orientation']}")
+  
+  print(f"\n{'='*70}\n")
+  
+  return info
