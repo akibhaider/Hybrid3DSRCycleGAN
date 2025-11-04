@@ -56,7 +56,7 @@ for patient_id in PATIENT_IDS:
 
         for modality in MODALITIES:
             # 2. Construct input and output paths
-            input_filename = f"{p_str}_{modality}_skullstripped.nii.gz"
+            input_filename = f"{p_str}_{modality}.nii.gz"
             output_filename = f"{p_str}_{modality}_N4corrected.nii.gz"
             
             input_path = os.path.join(BASE_DIR, p_str, source, input_filename)
@@ -66,9 +66,9 @@ for patient_id in PATIENT_IDS:
                 print(f"      WARNING: Input image not found at {input_path}. Skipping {modality}.")
                 continue
 
+            # Force overwrite existing outputs
             if os.path.exists(output_path):
-                print(f"      SKIP: Output already exists at {output_path}")
-                continue
+                print(f"      OVERWRITE: Replacing existing output at {output_path}")
 
             try:
                 # 3. Load the input image (skull-stripped) and cast to float
